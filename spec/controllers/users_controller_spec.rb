@@ -307,8 +307,8 @@ describe UsersController do
     describe "as an admin user" do
 
       before(:each) do
-        admin = Factory(:user, :email => "admin@example.com", :admin => true)
-        test_sign_in(admin)
+        @admin = Factory(:user, :email => "admin@example.com", :admin => true)
+        test_sign_in(@admin)
       end
 
       it "should destroy the user" do
@@ -321,6 +321,42 @@ describe UsersController do
         delete :destroy, :id => @user
         response.should redirect_to(users_path)
       end
+
+      it "should prevent admin users from destroying themselves" do
+        lambda do
+          delete :destroy, :id => @admin
+        end.should_not change(User, :count)
+        response.should redirect_to(users_path)
+      end
+    end
+  end
+  
+  describe "deny new/create pages for signed in users" do
+    before(:each) do
+      @user = Factory(:user)
+      @attr = {:name => "New User", :email => "user@example.com",
+               :password => "foobar", :password_confirmation => "foobar"}      
+      test_sign_in(@user)
+    end
+    
+    it "'new' should redirect signed-in to root path" do
+      get :new
+      response.should redirect_to(root_path)
+    end
+
+    it "'create' should redirect signed-in to root path" do
+      post :create, :user => @attr
+      response.should redirect_to(root_path)
+    end
+
+    it "'new' should have an info message" do
+      get :new
+      flash[:info].should =~ /You're already signed in.../i
+    end
+
+    it "'create' should have an info message" do
+      post :create, :user => @attr
+      flash[:info].should =~ /You're already signed in.../i
     end
   end
 end
